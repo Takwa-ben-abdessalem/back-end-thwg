@@ -15,6 +15,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import paymentService.model.Card;
 
 @Document(collection = "events")
 @NoArgsConstructor
@@ -35,14 +36,21 @@ public class Event {
     @DBRef
     private User organizer ;   
     
-    private String price;
+    private String price;  //from scrapy
+    private String prices; 
+
     private String description;
     private List<Binary> pics    ;
 	  private Date cree;
 	  private String type;
     private String link;
     private String image;
+    
     private Place Place;
+    
+    @DBRef
+    private Card EventCard;
+
     
     @DBRef
     private List<User> participant = new ArrayList<>();

@@ -32,13 +32,18 @@ import org.springframework.web.multipart.MultipartFile;
 import com.whitecape.auth.exceptions.CartItemAlreadyExistsException;
 import com.whitecape.auth.models.Event;
 import com.whitecape.auth.models.Place;
+import com.whitecape.auth.repository.CardRepository;
 import com.whitecape.auth.repository.EventRepository;
 import com.whitecape.auth.repository.UserRepository;
+import com.whitecape.auth.repository.chatRepository;
 import com.whitecape.auth.service.EventService;
 import com.whitecape.auth.service.UserService;
-import com.whitecape.auth.models.User;
-import com.whitecape.auth.models.cart.CartItem;
 
+import paymentService.model.Card;
+
+import com.whitecape.auth.models.User;
+import com.whitecape.auth.models.chatMessageDto;
+import com.whitecape.auth.models.chatRoomByEvent;
 
 
 
@@ -54,9 +59,18 @@ public class EventController {
 	private EventRepository eventRepository;
 	@Autowired
     UserService userService;
+	
+	@Autowired(required = false)
+
+
+	private CardRepository cardRepository;
+	
 	@Autowired
 	private UserRepository userRepository;
 	@Autowired  ServletContext context;
+	
+	@Autowired
+	chatRepository chatRepository ;
 	/**
 	 * Gets all events.
 	 *
@@ -336,7 +350,7 @@ public class EventController {
 
 	
 		
-    }
+    
 	
 	/*
 	@GetMapping(value = "/showImage")
@@ -348,7 +362,117 @@ public class EventController {
 			    return System.Convert.ToBase64String(image);
 			}
 	*/
+@PostMapping("/add/{number}/{productId}")
+public ResponseEntity<Event> addCard (@PathVariable(value = "number") String number , @PathVariable(value = "productId") String eventId) 
+	
+	
 	
 
+	
+	throws ResourceNotFoundException {
+	
+    Card card = cardRepository.findCardByCardNumber(number);
+
+		
+		
+	    Event event = eventRepository.findById(eventId)
+	    		
+	    .orElseThrow(() -> new ResourceNotFoundException("Event not found for this id :: " + eventId));
+	  
+	   
+
+     event.setEventCard(card);   
+	Event eventWithCard = eventRepository.save(event);
+
+
+
+    return new ResponseEntity<>(eventWithCard, HttpStatus.CREATED);
+}
+
+@PostMapping(value = "add/card/amount/{productId}/{amount}")
+@ResponseStatus(HttpStatus.OK)
+
+public  Card increaseCardAmount(@PathVariable ("amount") double amount,@PathVariable(value = "productId") String eventId ) throws ResourceNotFoundException{
+	
+	
+    Event event = eventRepository.findById(eventId)
+    		
+    .orElseThrow(() -> new ResourceNotFoundException("Event not found for this id :: " + eventId));
+	
+	double  amount2 = event.getEventCard().getAmount() ;
+	event.getEventCard().setAmount(amount2 + amount)  ;
+	cardRepository.save(event.getEventCard());
+	return  event.getEventCard();
+
+
+	
+}
+
+@PostMapping(value = "/add/chat/{eventId}/{userId}")
+@ResponseStatus(HttpStatus.OK)
+
+public  chatRoomByEvent addChat(@PathVariable("eventId") String eventId , @PathVariable("userId") String userId, @RequestBody String message){
+	
+	   Event event = eventRepository.findById(eventId)
+	    		
+			    .orElseThrow(() -> new ResourceNotFoundException("Event not found for this id :: " + eventId));	 
+	   
+	   for (chatRoomByEvent item : chatRepository.findAll()) {  
+       	if (item.getEventId().equals(event.getId())) {
+          chatRoomByEvent chatRoom = chatRepository.findChatByEventId(event.getId());
+          chatMessageDto chat = new chatMessageDto(userService.getUser(userId),message);
+
+          
+          chatRoom.getMessages().add(chat);
+          chatRepository.save(chatRoom);
+          return chatRoom;
+
+
+       }
+	   }       		
+       chatRoomByEvent chatRoom = new chatRoomByEvent(event.getId());
+     
+      chatMessageDto chat = new chatMessageDto(userService.getUser(userId),message);
+
+       
+       chatRoom.getMessages().add(chat);
+       chatRepository.save(chatRoom);
+       return chatRoom;
+
+
+
+	
+}
+
+@GetMapping(value = "/get/chat/all")
+@ResponseStatus(HttpStatus.OK)
+
+public List<chatRoomByEvent> getAllChats () {
+	
+	 
+   return chatRepository.findAll();
+    
+    
+    
+}
+
+@GetMapping(value = "/get/chat/{id}")
+@ResponseStatus(HttpStatus.OK)
+
+public List<chatMessageDto> getchatByEvent (@PathVariable String id) {
+	 Event event = eventRepository.findById(id)
+	    		
+			    .orElseThrow(() -> new ResourceNotFoundException("Event not found for this id :: " + id));	
+	 
+   return chatRepository.findChatByEventId(event.getId()).getMessages();
+    
+    
+    
+}
+
+
+
+
+}
 	
 	

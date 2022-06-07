@@ -12,6 +12,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import paymentService.model.Card;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -21,7 +22,6 @@ import java.util.Set;
 import javax.validation.constraints.Email;
 import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.Size;
-
 @Document(collection = "users")
 @Data
 @NoArgsConstructor
@@ -59,6 +59,7 @@ public class User {
   private String LastName;
   private String phoneNumber;
   private Binary picture  ;  
+  
 
   
 
