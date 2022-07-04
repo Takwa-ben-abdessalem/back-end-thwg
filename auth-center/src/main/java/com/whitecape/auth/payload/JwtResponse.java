@@ -1,7 +1,11 @@
 package com.whitecape.auth.payload;
 
 import java.util.List;
+import org.bson.types.Binary;
 
+import lombok.Data;
+
+@Data
 public class JwtResponse {
 	//private String token;
     private String accessToken;
@@ -11,14 +15,19 @@ public class JwtResponse {
 	private String username;
 	private String email;
 	private List<String> roles;
+	private Binary picture;
 
-	public JwtResponse(String accessToken, String id, String username, String email, List<String> roles) {
+	public JwtResponse(String accessToken, String id, String username, String email, Binary picture, List<String> roles) {
 		this.accessToken = accessToken;
 		this.id = id;
 		this.username = username;
 		this.email = email;
+		this.picture = picture;
+
 		this.roles = roles;
 	}
+
+	
 
 	public String getAccessToken() {
 		return accessToken;

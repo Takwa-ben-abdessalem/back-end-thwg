@@ -1,6 +1,11 @@
 package com.whitecape.auth.controller;
 
 import java.io.IOException;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -143,20 +148,12 @@ public class EventController {
         return eventRepository.findEventById(id).getParticipant();
     }
 	
-	/*    private String title;
-
-    private String price;
-
-    private String image;
-    private String type;
-    private String link;*/
+	
 	@PreAuthorize("hasRole('USER') or hasRole('ADMIN')")
 
 	@PostMapping(value = "/add")
 	public String persist(@RequestBody Event event) {
-		/*Event event = new Event(EventRequest.getTitle(), 
-				 EventRequest.getPrice(),EventRequest.getImage(),
-				 EventRequest.getType(),EventRequest.getLink());*/
+	
 		Event insertedEvent = eventRepository.insert(event);
 	
 
@@ -277,14 +274,7 @@ public class EventController {
 			}
 
 	
-	/* public List<Event> put(@PathVariable String id, @RequestBody Event event) {
-		if (eventRepository.existsById(id)) {
-			eventRepository.save(event);
-			
-		}
-		
-		return eventRepository.findAll();
-	} */
+
 	@PostMapping(value = "/all/{id}/{productId}")
 
 	public ResponseEntity<Event> AddParticipant(@PathVariable(value = "productId") String eventId,@PathVariable(value = "id") String userId
@@ -343,25 +333,7 @@ public class EventController {
 		}
 	}
 	
-	/////////////////////////////
-	//////////////////////////////
-	//////////////////////////////
-	
 
-	
-		
-    
-	
-	/*
-	@GetMapping(value = "/showImage")
-        public List<Binary> showImage (@PathVariable String id) {
-			{
-			    var image =  eventRepository.findEventById(id).getPics();
-			    
-
-			    return System.Convert.ToBase64String(image);
-			}
-	*/
 @PostMapping("/add/{number}/{productId}")
 public ResponseEntity<Event> addCard (@PathVariable(value = "number") String number , @PathVariable(value = "productId") String eventId) 
 	
@@ -420,7 +392,7 @@ public  chatRoomByEvent addChat(@PathVariable("eventId") String eventId , @PathV
 	   for (chatRoomByEvent item : chatRepository.findAll()) {  
        	if (item.getEventId().equals(event.getId())) {
           chatRoomByEvent chatRoom = chatRepository.findChatByEventId(event.getId());
-          chatMessageDto chat = new chatMessageDto(userService.getUser(userId),message);
+          chatMessageDto chat = new chatMessageDto(userService.getUser(userId),message,LocalDateTime.now(ZoneId.of("GMT+01:00")));
 
           
           chatRoom.getMessages().add(chat);
@@ -432,7 +404,7 @@ public  chatRoomByEvent addChat(@PathVariable("eventId") String eventId , @PathV
 	   }       		
        chatRoomByEvent chatRoom = new chatRoomByEvent(event.getId());
      
-      chatMessageDto chat = new chatMessageDto(userService.getUser(userId),message);
+      chatMessageDto chat = new chatMessageDto(userService.getUser(userId),message,LocalDateTime.now(ZoneId.of("GMT+01:00")));
 
        
        chatRoom.getMessages().add(chat);

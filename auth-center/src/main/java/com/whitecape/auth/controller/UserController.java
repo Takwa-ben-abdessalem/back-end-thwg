@@ -1,6 +1,9 @@
 package com.whitecape.auth.controller;
 
 import java.io.IOException;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
 
 import javax.validation.Valid;
@@ -18,13 +21,18 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.http.HttpStatus;
 
 import com.whitecape.auth.models.Event;
+import com.whitecape.auth.models.NotifByUser;
 import com.whitecape.auth.models.User;
+import com.whitecape.auth.models.chatMessageDto;
+import com.whitecape.auth.models.chatRoomByEvent;
 import com.whitecape.auth.repository.EventRepository;
+import com.whitecape.auth.repository.NotifRepository;
 import com.whitecape.auth.repository.UserRepository;
 import com.whitecape.auth.service.EventService;
 import com.whitecape.auth.service.UserService;
@@ -42,6 +50,9 @@ public class UserController {
 	private UserRepository userRepository;
 	@Autowired
     UserService userService;
+	@Autowired
+	private NotifRepository notifRepository;
+	
 	@GetMapping("/users")
     public ResponseEntity<List<User>> getUsers () {
         return new ResponseEntity<>(userService.getUsers(), HttpStatus.OK);
@@ -89,6 +100,101 @@ public class UserController {
 			    return ResponseEntity.ok(user);
 			}
 	
+	
+	@PostMapping(value = "/users/add/notif/{userId}")
+	@ResponseStatus(HttpStatus.OK)
+
+	public  NotifByUser addChat(@PathVariable("userId") String userId , @RequestBody String message){
+		
+		  User user = userService.getUser(userId); 
+		   
+		   for (NotifByUser item : notifRepository.findAll()) {  
+	       	if (item.getUserId().equals(user.getId())) {
+	       		NotifByUser notifByUser = notifRepository.findNotifByUserId(user.getId());
+	          chatMessageDto notif = new chatMessageDto(userService.getUser(userId),message,LocalDateTime.now());
+
+	          
+	          notifByUser.getMessages().add(notif);
+	          int count = notifByUser.getNotifCount() ;
+	          count ++;
+	          notifByUser.setNotifCount(count);
+	          notifRepository.save(notifByUser);
+	          return notifByUser;
+           
+
+	       }
+		   }       		
+		   NotifByUser notifByUser = new NotifByUser(user.getId());
+	     
+	      chatMessageDto notif = new chatMessageDto(userService.getUser(userId),message,LocalDateTime.now());
+
+	       
+	      notifByUser.getMessages().add(notif);
+	      int count = notifByUser.getNotifCount() ;
+          count ++;
+          notifByUser.setNotifCount(count);
+
+          notifRepository.save(notifByUser);
+          return notifByUser;
+
+
+
+		
+	}
+	
+	@GetMapping(value = "users/get/notif/{id}")
+	@ResponseStatus(HttpStatus.OK)
+
+	public List<chatMessageDto> getNotifByUser (@PathVariable String id) {
+		
+		  User user = userService.getUser(id); 
+
+		 
+	   return notifRepository.findNotifByUserId(user.getId()).getMessages();
+	    
+	    
+	    
+	}
+	
+	@GetMapping(value = "users/get/notifD/{id}")
+	@ResponseStatus(HttpStatus.OK)
+
+	public NotifByUser getNotifDetails (@PathVariable String id) {
+		
+		  User user = userService.getUser(id); 
+
+		 
+	   return notifRepository.findNotifByUserId(user.getId());
+	    
+	    
+	    
+	}
+	
+	@PostMapping(value = "users/markAllAsRead/notif/{id}")
+	@ResponseStatus(HttpStatus.OK)
+
+	public NotifByUser MarkAllAsRead (@PathVariable String id) {
+		
+		  User user = userService.getUser(id); 
+
+		 
+	   NotifByUser notif = notifRepository.findNotifByUserId(user.getId());
+	   int count = notif.getNotifCount() ;
+	   count = 0;
+	   notif.setNotifCount(count);
+	   return (notifRepository.save(notif));
+	    
+	    
+	    
+	}
+	
+	
+	  
+	
+	
+	
+
+
     
 	
 

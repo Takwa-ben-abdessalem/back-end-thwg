@@ -4,6 +4,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import org.bson.types.Binary;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
@@ -14,11 +15,13 @@ import com.whitecape.auth.models.User;
 import com.whitecape.auth.payload.AuthRequest;
 import com.whitecape.auth.payload.AuthResponse;
 
+import lombok.Data;
+
 import java.util.Objects;
 
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 
-
+@Data
 public class UserDetailsImpl implements UserDetails {
 	private static final long serialVersionUID = 1L;
 
@@ -30,16 +33,19 @@ public class UserDetailsImpl implements UserDetails {
 
 	@JsonIgnore
 	private String password;
+	  private Binary picture  ;  
+
 
 	private Collection<? extends GrantedAuthority> authorities;
 
 	public UserDetailsImpl(String id, String username, String email, String password,
-			Collection<? extends GrantedAuthority> authorities) {
+			Collection<? extends GrantedAuthority> authorities, Binary picture) {
 		this.id = id;
 		this.username = username;
 		this.email = email;
 		this.password = password;
 		this.authorities = authorities;
+		this.picture = picture;
 	}
 
 
@@ -53,7 +59,8 @@ public class UserDetailsImpl implements UserDetails {
 				user.getUsername(), 
 				user.getEmail(),
 				user.getPassword(), 
-				authorities);
+				authorities,
+				user.getPicture());
 	}
 
 	@Override

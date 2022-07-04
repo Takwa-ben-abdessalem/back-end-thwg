@@ -46,6 +46,7 @@ public class Event {
     private String link;
     private String image;
     
+    
     private Place Place;
     
     @DBRef

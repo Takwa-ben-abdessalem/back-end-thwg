@@ -84,7 +84,8 @@ public class AuthController {
 				 userDetails.getId(), 
 				 userDetails.getUsername(), 
 				 userDetails.getEmail(), 
-				 roles));
+				 userDetails.getPicture(),
+				roles));
     	
     	
     	//return ResponseEntity.ok( userDetailService.createJwtToken(request));
