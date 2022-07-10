@@ -34,11 +34,14 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.netflix.eventbus.impl.EventBatch;
 import com.whitecape.auth.exceptions.CartItemAlreadyExistsException;
 import com.whitecape.auth.models.Event;
+import com.whitecape.auth.models.EventsByUser;
 import com.whitecape.auth.models.Place;
 import com.whitecape.auth.repository.CardRepository;
 import com.whitecape.auth.repository.EventRepository;
+import com.whitecape.auth.repository.EventsByUserRepository;
 import com.whitecape.auth.repository.UserRepository;
 import com.whitecape.auth.repository.chatRepository;
 import com.whitecape.auth.service.EventService;
@@ -50,52 +53,38 @@ import com.whitecape.auth.models.User;
 import com.whitecape.auth.models.chatMessageDto;
 import com.whitecape.auth.models.chatRoomByEvent;
 
-
-
-
-
-
 @RestController
 @RequestMapping("/api/events")
 @CrossOrigin("*")
-public class EventController {
 
+public class EventController {
 	@Autowired
 	private EventRepository eventRepository;
 	@Autowired
-    UserService userService;
-	
+    UserService userService;	
 	@Autowired(required = false)
-
-
 	private CardRepository cardRepository;
-	
 	@Autowired
 	private UserRepository userRepository;
 	@Autowired  ServletContext context;
-	
 	@Autowired
 	chatRepository chatRepository ;
+	@Autowired
+	EventsByUserRepository eventsByUserRepository ;
+	private boolean ByCard = false;
 	/**
 	 * Gets all events.
 	 *
 	 * @return all events
 	 */
 	private EventService eventService;
-	
-
 	@GetMapping(value = "/all")
     @ResponseStatus(HttpStatus.OK)
-
     public @NotNull Iterable<Event> getEvents() {
 		 return eventRepository.findAll();
     }
-	
-	
-
 	@GetMapping(value = "/image/{id}")
     @ResponseStatus(HttpStatus.OK)
-
     public  List<Binary> getEventImage(@PathVariable("id") String id) {
 		 return eventRepository.findEventById(id).getPics();
     }
@@ -113,12 +102,20 @@ public class EventController {
 	
 	@GetMapping(value = "/all/{id}")
     @ResponseStatus(HttpStatus.OK)
-
     public Event getEvent (@PathVariable String id) {
         return eventRepository.findEventById(id);
     }
+	@GetMapping(value = "/all/pending")
+    @ResponseStatus(HttpStatus.OK)
+    public List<EventsByUser> getEventPending () {
+        return eventsByUserRepository.findAll();
+    }
+	@GetMapping(value = "/pending/{id}")
+    @ResponseStatus(HttpStatus.OK)
+    public EventsByUser getEventWithPendingParticipant (@PathVariable String id) {
+        return eventsByUserRepository.findEventById(id);
+    }
 	
-
     @PostMapping(value ="/all/{id}/add/{productId}")
     public ResponseEntity<Event> addParticipant (@PathVariable("id") String id,
             @PathVariable("productId") String productId) {
@@ -126,12 +123,58 @@ public class EventController {
     	Event product = eventRepository.findEventById(productId);
 
         product.getParticipant().add(userService.getUser(id));
+        eventRepository.save(product);
+        
+     
+
         
 
 
         
         return new ResponseEntity<>(product, HttpStatus.CREATED);
     }
+    
+    @PostMapping(value ="/all/{id}/addPending/{productId}")
+    public ResponseEntity<EventsByUser> addPendingParticipant (@PathVariable("id") String id,
+            @PathVariable("productId") String productId) {
+
+
+    
+        
+	    		
+        for (EventsByUser item : eventsByUserRepository.findAll()) {  
+           	if (item.getEvent().getId().equals(productId)) {
+           	  item.getParticipant().add(userService.getUser(id));
+              
+              
+              eventsByUserRepository.save(item);
+              return new ResponseEntity<>(item, HttpStatus.CREATED);
+
+
+           }
+    	   }      
+        Event product = eventRepository.findById(productId)			    .orElseThrow(() -> new ResourceNotFoundException("Event not found for this id :: " + productId)); 
+
+
+        EventsByUser event = new EventsByUser();
+        event.setEvent(product);
+        event.getParticipant().add(userService.getUser(id));
+      
+        
+        eventsByUserRepository.save(event);
+
+        
+
+
+        
+        return new ResponseEntity<>(event, HttpStatus.CREATED);
+    	}
+        
+        
+        
+       
+    
+    
 	
 	@GetMapping(value = "/all/organizer/{id}")
     @ResponseStatus(HttpStatus.OK)
@@ -163,6 +206,24 @@ public class EventController {
 
 	 	
 	}
+	
+	@GetMapping(value = "pending/participant/{id}")
+    @ResponseStatus(HttpStatus.OK)
+
+    public List<User> getPendingPartcipants (@PathVariable String id) {
+	    Event product = eventRepository.findEventById(id);
+        EventsByUser event = new EventsByUser();
+ 		
+        for (EventsByUser item : eventsByUserRepository.findAll()) {  
+           	if (item.getEvent().getId().equals(id)) {
+		       event = item ;
+              }
+        }
+        return event.getParticipant();
+
+	}
+	
+	
 	  @PostMapping("/add/{id}")
 	    public ResponseEntity<Event> addEventWithOrganizer ( @PathVariable("id") String id, @RequestBody Event event) throws IOException{
 	    	
@@ -209,16 +270,36 @@ public class EventController {
 
 
 	@PreAuthorize("hasRole('USER') or hasRole('ADMIN')")
-
-	
 	@DeleteMapping(value = "/delete/{id}")
 	public String delete(@PathVariable String id) {
 		eventRepository.deleteById(id);
 		return "Event deleted with id : " +id;
 	}
 	
-	@PostMapping(value = "/all/image/{productId}")
+	///////////////// FROM PENDING TO ACCEPTED ////////////
+	@PostMapping(value = "/changeStatus/{id}/pending/{productId}")
+	public String deleteEventPendding(@PathVariable String id,@PathVariable String productId) {
+    	Event product = eventRepository.findEventById(productId);
+        EventsByUser event = new EventsByUser();
 
+    	for (EventsByUser item : eventsByUserRepository.findAll()) {  
+           	if (item.getEvent().getId().equals(productId)) {
+		       event = item ;
+		       for(User participant : event.getParticipant()) {
+		          if(participant.getId().equals( id)) {
+		    	     product.getParticipant().add(userService.getUser(id));
+		             eventRepository.save(product);  
+		             event.getParticipant().remove(participant);
+		             eventsByUserRepository.save(event);
+		              
+		       }
+		       }
+        }
+    	}
+		return id;
+	}
+	
+	@PostMapping(value = "/all/image/{productId}")
 	public ResponseEntity<Event> AddImage(@PathVariable(value = "productId") String eventId,@RequestParam("myFile") MultipartFile[] file
 			)  throws IOException {
 		
@@ -250,7 +331,6 @@ public class EventController {
 			}
 	
 	@PostMapping(value = "/all/place/{productId}")
-
 	public ResponseEntity<Event> AddPlace(@PathVariable(value = "productId") String eventId,@RequestBody Place place)
 			 {
 		
@@ -276,7 +356,6 @@ public class EventController {
 	
 
 	@PostMapping(value = "/all/{id}/{productId}")
-
 	public ResponseEntity<Event> AddParticipant(@PathVariable(value = "productId") String eventId,@PathVariable(value = "id") String userId
 			  ) throws ResourceNotFoundException {
 		
@@ -303,7 +382,6 @@ public class EventController {
 			    return ResponseEntity.ok(eventParticipated);
 			}
 	@PreAuthorize("hasRole('USER') or hasRole('ADMIN')")
-
 	@PutMapping(value = "/put/{id}")
 
 	public ResponseEntity<Event> updateEvent(@PathVariable(value = "id") String eventId,
@@ -334,8 +412,8 @@ public class EventController {
 	}
 	
 
-@PostMapping("/add/{number}/{productId}")
-public ResponseEntity<Event> addCard (@PathVariable(value = "number") String number , @PathVariable(value = "productId") String eventId) 
+	@PostMapping("/add/{number}/{productId}")
+	public ResponseEntity<Event> addCard (@PathVariable(value = "number") String number , @PathVariable(value = "productId") String eventId) 
 	
 	
 	
@@ -353,18 +431,18 @@ public ResponseEntity<Event> addCard (@PathVariable(value = "number") String num
 	  
 	   
 
-     event.setEventCard(card);   
-	Event eventWithCard = eventRepository.save(event);
+	    event.setEventCard(card);   
+     	Event eventWithCard = eventRepository.save(event);
 
 
 
-    return new ResponseEntity<>(eventWithCard, HttpStatus.CREATED);
-}
+	return new ResponseEntity<>(eventWithCard, HttpStatus.CREATED);
+	}
 
-@PostMapping(value = "add/card/amount/{productId}/{amount}")
-@ResponseStatus(HttpStatus.OK)
+	@PostMapping(value = "add/card/amount/{productId}/{amount}")
+	@ResponseStatus(HttpStatus.OK)
 
-public  Card increaseCardAmount(@PathVariable ("amount") double amount,@PathVariable(value = "productId") String eventId ) throws ResourceNotFoundException{
+	public  Card increaseCardAmount(@PathVariable ("amount") double amount,@PathVariable(value = "productId") String eventId ) throws ResourceNotFoundException{
 	
 	
     Event event = eventRepository.findById(eventId)
@@ -374,16 +452,17 @@ public  Card increaseCardAmount(@PathVariable ("amount") double amount,@PathVari
 	double  amount2 = event.getEventCard().getAmount() ;
 	event.getEventCard().setAmount(amount2 + amount)  ;
 	cardRepository.save(event.getEventCard());
+    ByCard = true;
+
 	return  event.getEventCard();
 
-
 	
-}
+	}
 
-@PostMapping(value = "/add/chat/{eventId}/{userId}")
-@ResponseStatus(HttpStatus.OK)
+	@PostMapping(value = "/add/chat/{eventId}/{userId}")
+	@ResponseStatus(HttpStatus.OK)
 
-public  chatRoomByEvent addChat(@PathVariable("eventId") String eventId , @PathVariable("userId") String userId, @RequestBody String message){
+	public  chatRoomByEvent addChat(@PathVariable("eventId") String eventId , @PathVariable("userId") String userId, @RequestBody String message){
 	
 	   Event event = eventRepository.findById(eventId)
 	    		
@@ -404,34 +483,25 @@ public  chatRoomByEvent addChat(@PathVariable("eventId") String eventId , @PathV
 	   }       		
        chatRoomByEvent chatRoom = new chatRoomByEvent(event.getId());
      
-      chatMessageDto chat = new chatMessageDto(userService.getUser(userId),message,LocalDateTime.now(ZoneId.of("GMT+01:00")));
-
-       
+      chatMessageDto chat = new chatMessageDto(userService.getUser(userId),message,LocalDateTime.now(ZoneId.of("GMT+01:00"))); 
        chatRoom.getMessages().add(chat);
        chatRepository.save(chatRoom);
        return chatRoom;
+	}
 
-
-
-	
-}
-
-@GetMapping(value = "/get/chat/all")
-@ResponseStatus(HttpStatus.OK)
-
-public List<chatRoomByEvent> getAllChats () {
-	
-	 
+	@GetMapping(value = "/get/chat/all")
+	@ResponseStatus(HttpStatus.OK)
+	public List<chatRoomByEvent> getAllChats () { 
    return chatRepository.findAll();
     
     
     
-}
+	}
 
-@GetMapping(value = "/get/chat/{id}")
-@ResponseStatus(HttpStatus.OK)
+	@GetMapping(value = "/get/chat/{id}")
+	@ResponseStatus(HttpStatus.OK)
 
-public List<chatMessageDto> getchatByEvent (@PathVariable String id) {
+	public List<chatMessageDto> getchatByEvent (@PathVariable String id) {
 	 Event event = eventRepository.findById(id)
 	    		
 			    .orElseThrow(() -> new ResourceNotFoundException("Event not found for this id :: " + id));	
@@ -440,7 +510,9 @@ public List<chatMessageDto> getchatByEvent (@PathVariable String id) {
     
     
     
-}
+	}
+	
+	
 
 
 

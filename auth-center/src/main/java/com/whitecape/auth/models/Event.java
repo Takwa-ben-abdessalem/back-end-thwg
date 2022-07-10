@@ -2,7 +2,9 @@ package com.whitecape.auth.models;
 
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import javax.validation.constraints.NotNull;
 
@@ -52,10 +54,11 @@ public class Event {
     @DBRef
     private Card EventCard;
 
-    
     @DBRef
     private List<User> participant = new ArrayList<>();
-  
+    //Map<String,List<User>> participant = new HashMap<String,List<User>>();
+    
+
  
 	public String getId() {
 		return id;
