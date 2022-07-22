@@ -294,6 +294,11 @@ public class EventController {
 		              
 		       }
 		       }
+		    	if(event.getParticipant().size() == 0) {
+	           		eventsByUserRepository.delete(event);
+	           	}
+	           
+
         }
     	}
 		return id;
